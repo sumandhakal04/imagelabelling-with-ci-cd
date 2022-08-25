@@ -1,0 +1,66 @@
+stages:
+  - unit_test
+  - lambda-package
+  - validate
+  - plan
+  - apply
+image: python:latest
+
+variables:
+  AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+  AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+  AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+  
+before_script:
+  - python -V # Display version for debugging purposes only
+  - apt-get update -y
+  - apt-get install unzip wget -y
+  - wget https://releases.hashicorp.com/terraform/1.2.3/terraform_1.2.3_linux_amd64.zip
+  - unzip terraform_1.2.3_linux_amd64.zip
+  - mv terraform /usr/local/bin/
+  - terraform --version
+  - pip install awscli
+  - aws --version
+  - aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+  - aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+  - aws configure set region $AWS_DEFAULT_REGION
+  - rm -rf .terraform
+  - terraform --version
+  - cd terraform-config
+  - terraform init
+
+unit_test:
+  stage: unit_test
+  script:
+    - cd lambda-functions
+    - python -m unittest discover
+    - cd ..
+
+lambda-package:
+  stage: lambda-package
+  script:
+    - rm -rf lambda-label.zip lambda-upload.zip
+    - terraform apply --target="data.archive_file.lambda-payload-label" --target="data.archive_file.lambda-payload-upload"
+validate:
+  stage: validate
+  script:
+    - terraform validate
+plan:
+  stage: plan
+  script:
+    - ls -lisa
+    - terraform plan -out "planfile"
+  dependencies:
+    - validate
+  artifacts:
+    paths:
+      - terraform-config/planfile
+      - terraform-config/lambda-label.zip
+      - terraform-config/lambda-upload.zip
+apply:
+  stage: apply
+  script:
+    - terraform apply "planfile"
+  dependencies:
+    - plan
+  when: on_success
