@@ -35,5 +35,5 @@ Usage
  
 Authors
  
-- sdhakal@stud.hs-heilbronn.de
-- ssebastian@stud.hs-heilbronn.de
+- dhakalsuman04@gmail.com
+- sijinsebastian@gmail.com
